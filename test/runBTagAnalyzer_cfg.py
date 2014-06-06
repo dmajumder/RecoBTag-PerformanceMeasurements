@@ -608,6 +608,19 @@ process.selectedPatJetsCA8PrunedPFPacked = cms.EDProducer("BoostedJetMerger",
 #-------------------------------------
 
 #-------------------------------------
+## N-subjettiness
+from RecoJets.JetProducers.nJettinessAdder_cfi import Njettiness
+
+process.NjettinessCA8 = Njettiness.clone(
+    src = cms.InputTag("ca8PFJets"),
+    cone = cms.double(0.8)
+)
+
+if options.runSubJets:
+    process.patJets.userData.userFloats.src += ['NjettinessCA8:tau1','NjettinessCA8:tau2','NjettinessCA8:tau3']
+#-------------------------------------
+
+#-------------------------------------
 #from PhysicsTools.PatAlgos.tools.coreTools import * # Already imported above
 ## Remove objects not used from the PAT sequences to speed up processing
 if options.runSubJets:
@@ -716,7 +729,7 @@ if options.useTTbarFilter:
 #-------------------------------------
 
 #-------------------------------------
-from RecoBTag.PerformanceMeasurements.patTools import *
+from PhysicsTools.PatAlgos.tools.pfTools import *
 ## Adapt primary vertex collection
 adaptPVs(process, pvCollection=cms.InputTag('goodOfflinePrimaryVertices'), postfix=postfix, sequence='patPF2PATSequence')
 if options.runSubJets:
@@ -770,6 +783,8 @@ process.btagana.produceJetTrackTree   = False ## True if you want to keep info f
 process.btagana.produceAllTrackTree   = False ## True if you want to keep info for tracks associated to jets : for commissioning studies
 process.btagana.producePtRelTemplate  = options.producePtRelTemplate  ## True for performance studies
 #------------------
+process.btagana.storeTagVariables     = False ## True if you want to keep TagInfo TaggingVariables
+process.btagana.storeCSVTagVariables  = False ## True if you want to keep CSV TaggingVariables
 process.btagana.primaryVertexColl     = cms.InputTag('goodOfflinePrimaryVertices')
 process.btagana.Jets                  = cms.InputTag('selectedPatJets'+postfix)
 process.btagana.patMuonCollectionName = cms.InputTag('selectedPatMuons')
@@ -781,7 +796,7 @@ process.btaganaSubJets = process.btagana.clone(
     allowJetSkipping    = cms.bool(False),
     Jets                = cms.InputTag('selectedPatJetsCA8PrunedSubJetsPF'),
     FatJets             = cms.InputTag('selectedPatJets'),
-    PrunedFatJets       = cms.InputTag('selectedPatJetsCA8PrunedPFPacked'),
+    GroomedFatJets      = cms.InputTag('selectedPatJetsCA8PrunedPFPacked'),
     runSubJets          = options.runSubJets,
     use_ttbar_filter    = cms.bool(False)
 )
@@ -858,6 +873,7 @@ if options.runSubJets:
     process.combPF2PATSubJetSeq = cms.Sequence(
         getattr(process,"patPF2PATSequence"+postfix)
         * process.jetSeq
+        * process.NjettinessCA8
         * getattr(process,"patDefaultSequence")
         * process.selectedPatJetsCA8PrunedPFPacked
     )

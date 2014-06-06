@@ -24,11 +24,6 @@ Implementation:
 #include <memory>
 
 // user include files
-// FastJet
-#include "fastjet/PseudoJet.hh"
-// N-subjettiness
-#include "RecoBTag/PerformanceMeasurements/interface/Njettiness.hh"
-
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/Framework/interface/EDAnalyzer.h"
 #include "FWCore/Framework/interface/Event.h"
@@ -116,11 +111,21 @@ Implementation:
 // constants, enums and typedefs
 //
 typedef std::vector<pat::Jet> PatJetCollection;
-typedef std::map<const pat::Jet*,const pat::Jet*> JetToJetMap;
 
 //
 // class declaration
 //
+
+struct orderByPt {
+    const std::string mCorrLevel;
+    orderByPt(const std::string& fCorrLevel) : mCorrLevel(fCorrLevel) {}
+    bool operator ()(PatJetCollection::const_iterator const& a, PatJetCollection::const_iterator const& b) {
+      if( mCorrLevel=="Uncorrected" )
+        return a->correctedJet("Uncorrected").pt() > b->correctedJet("Uncorrected").pt();
+      else
+        return a->pt() > b->pt();
+    }
+};
 
 using namespace std;
 using namespace reco;
@@ -173,11 +178,16 @@ class BTagAnalyzer : public edm::EDAnalyzer
     void processTrig(const edm::Handle<edm::TriggerResults>&, const std::vector<std::string>&) ;
 
     void processJets(const edm::Handle<PatJetCollection>&, const edm::Handle<PatJetCollection>&,
-        const edm::Event&, const edm::EventSetup&, const JetToJetMap&, const int) ;
+                     const edm::Event&, const edm::EventSetup&,
+                     const edm::Handle<PatJetCollection>&, std::vector<int>&, const int) ;
 
     int isFromGSP(const reco::Candidate* c);
 
     bool isHardProcess(const int status);
+
+    void matchGroomedJets(const edm::Handle<PatJetCollection>& jets,
+                          const edm::Handle<PatJetCollection>& matchedJets,
+                          std::vector<int>& matchedIndices);
 
     // ----------member data ---------------------------
     std::string outputFile_;
@@ -185,6 +195,8 @@ class BTagAnalyzer : public edm::EDAnalyzer
 
     bool runSubJets_ ;
     bool allowJetSkipping_ ;
+    bool storeTagVariables_;
+    bool storeCSVTagVariables_;
 
     edm::InputTag src_;  // Generator/handronizer module label
     edm::InputTag muonCollectionName_;
@@ -194,7 +206,7 @@ class BTagAnalyzer : public edm::EDAnalyzer
 
     edm::InputTag JetCollectionTag_;
     edm::InputTag FatJetCollectionTag_;
-    edm::InputTag PrunedFatJetCollectionTag_;
+    edm::InputTag GroomedFatJetCollectionTag_;
 
     std::string jetPBJetTags_;
     std::string jetPNegBJetTags_;
@@ -311,8 +323,6 @@ class BTagAnalyzer : public edm::EDAnalyzer
     TLorentzVector thelepton2;
 
     const GenericMVAJetTagComputer *computer ;
-
-    Njettiness nsubjettinessCalculator;
 
     edm::View<reco::Muon> muons ;
 

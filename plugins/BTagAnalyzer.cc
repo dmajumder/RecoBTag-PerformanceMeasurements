@@ -1,4 +1,5 @@
 #include "RecoBTag/PerformanceMeasurements/interface/BTagAnalyzer.h"
+#include "SimDataFormats/GeneratorProducts/interface/GenEventInfoProduct.h"
 #include "PhysicsTools/SelectorUtils/interface/PFJetIDSelectionFunctor.h"
 
 PFJetIDSelectionFunctor pfjetIDLoose( PFJetIDSelectionFunctor::FIRSTDATA, PFJetIDSelectionFunctor::LOOSE );
@@ -31,7 +32,8 @@ BTagAnalyzer::BTagAnalyzer(const edm::ParameterSet& iConfig):
   can5(0),
   can6(0),
   can7(0),
-  can8(0)
+  can8(0),
+  hadronizerType_(0)
 {
   //now do what ever initialization you need
   std::string module_type  = iConfig.getParameter<std::string>("@module_type");
@@ -46,16 +48,20 @@ BTagAnalyzer::BTagAnalyzer(const edm::ParameterSet& iConfig):
 
   selTagger_ = iConfig.getParameter<int>("selTagger");
 
-  use_selected_tracks_ = iConfig.getParameter<bool> ("use_selected_tracks");
-  useTrackHistory_     = iConfig.getParameter<bool> ("useTrackHistory");
-  produceJetProbaTree_ = iConfig.getParameter<bool> ("produceJetProbaTree");
-  producePtRelTemplate_ = iConfig.getParameter<bool>("producePtRelTemplate");
+  useSelectedTracks_    = iConfig.getParameter<bool> ("useSelectedTracks");
+  useTrackHistory_      = iConfig.getParameter<bool> ("useTrackHistory");
+  produceJetTrackTree_  = iConfig.getParameter<bool> ("produceJetTrackTree");
+  produceAllTrackTree_  = iConfig.getParameter<bool> ("produceAllTrackTree");
+  producePtRelTemplate_ = iConfig.getParameter<bool> ("producePtRelTemplate");
 
   use_ttbar_filter_     = iConfig.getParameter<bool> ("use_ttbar_filter");
   channel_              = iConfig.getParameter<edm::InputTag> ("channel");
 
   // Modules
   primaryVertexColl_   = iConfig.getParameter<edm::InputTag>("primaryVertexColl");
+  tracksColl_          = iConfig.getParameter<edm::InputTag>("tracksColl");
+
+  src_                 = iConfig.getParameter<edm::InputTag>("src");
 
   JetCollectionTag_ = iConfig.getParameter<edm::InputTag>("Jets");
   FatJetCollectionTag_ = iConfig.getParameter<edm::InputTag>("FatJets");
@@ -143,18 +149,19 @@ BTagAnalyzer::BTagAnalyzer(const edm::ParameterSet& iConfig):
   EventInfo.RegisterTree(smalltree);
   if ( runSubJets_ )          EventInfo.RegisterPatMuonTree(smalltree);
   if ( use_ttbar_filter_ )    EventInfo.RegisterTTbarTree(smalltree);
-  if ( produceJetProbaTree_ ) EventInfo.RegisterJPTree(smalltree);
+  if ( produceJetTrackTree_ ) EventInfo.RegisterJetTrackTree(smalltree);
+  if ( produceAllTrackTree_ ) EventInfo.RegisterAllTrackTree(smalltree);
 
   //--------------------------------------
   // jet information
   //--------------------------------------
   JetInfo[0].RegisterTree(smalltree,(runSubJets_ ? "JetInfo" : ""));
   if ( runSubJets_ )          JetInfo[0].RegisterSubJetSpecificTree(smalltree,(runSubJets_ ? "JetInfo" : ""));
-  if ( produceJetProbaTree_ ) JetInfo[0].RegisterJPTree(smalltree,(runSubJets_ ? "JetInfo" : ""));
+  if ( produceJetTrackTree_ ) JetInfo[0].RegisterJetTrackTree(smalltree,(runSubJets_ ? "JetInfo" : ""));
   if ( runSubJets_ ) {
     JetInfo[1].RegisterTree(smalltree,"FatJetInfo");
     JetInfo[1].RegisterFatJetSpecificTree(smalltree,"FatJetInfo");
-    if ( produceJetProbaTree_ ) JetInfo[1].RegisterJPTree(smalltree,"FatJetInfo");
+    if ( produceJetTrackTree_ ) JetInfo[1].RegisterJetTrackTree(smalltree,"FatJetInfo");
   }
 
   //// Book Histograms
@@ -244,27 +251,44 @@ void BTagAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
   }
 
   //------------------------------------------------------
+  // Determine hadronizer type (done only once per job)
+  //------------------------------------------------------
+  if( !isData_ && hadronizerType_ == 0 )
+  {
+    edm::Handle<GenEventInfoProduct> genEvtInfoProduct;
+    iEvent.getByLabel(src_, genEvtInfoProduct);
+
+    std::string moduleName = "";
+    const edm::Provenance& prov = iEvent.getProvenance(genEvtInfoProduct.id());
+    if( genEvtInfoProduct.isValid() )
+      moduleName = prov.moduleName();
+
+    if( moduleName.find("Pythia8")!=std::string::npos )
+      hadronizerType_ |= ( 1 << 1 ); // set the 2nd bit
+    else // assuming Pythia6
+      hadronizerType_ |= ( 1 << 0 ); // set the 1st bit
+  }
+
+  //------------------------------------------------------
   // MC informations
   //------------------------------------------------------
-  EventInfo.pthat = -1.;
-  EventInfo.nPUtrue = -1.;
-  EventInfo.nPU = 0;
+  EventInfo.pthat      = -1.;
+  EventInfo.nPUtrue    = -1.;
+  EventInfo.nPU        = 0;
   EventInfo.ncQuarks   = 0;
   EventInfo.nbQuarks   = 0;
   EventInfo.nBHadrons  = 0;
   EventInfo.nDHadrons  = 0;
   EventInfo.nDaughters = 0;
-//$$
   EventInfo.nGenV0     = 0;
-//$$
   EventInfo.nGenlep    = 0;
   EventInfo.nGenquark  = 0;
+  EventInfo.nTrkAll    = 0;
   EventInfo.nPatMuon   = 0;
   EventInfo.mcweight   = 1.;
 
-//$$
   bool AreBHadrons = false;
-//$$
+
 
   //---------------------------- Start MC info ---------------------------------------//
   if ( !isData_ ) {
@@ -280,7 +304,7 @@ void BTagAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
 
     std::vector<PileupSummaryInfo>::const_iterator ipu;
     for (ipu = PupInfo->begin(); ipu != PupInfo->end(); ++ipu) {
-      if ( ipu->getBunchCrossing() != 0 ) continue;
+      if ( ipu->getBunchCrossing() != 0 ) continue; // storing detailed PU info only for BX=0
       for (unsigned int i=0; i<ipu->getPU_zpositions().size(); ++i) {
         EventInfo.PU_bunch[EventInfo.nPU]      =  ipu->getBunchCrossing();
         EventInfo.PU_z[EventInfo.nPU]          = (ipu->getPU_zpositions())[i];
@@ -291,6 +315,7 @@ void BTagAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
         ++EventInfo.nPU;
       }
       EventInfo.nPUtrue = ipu->getTrueNumInteractions();
+      if(EventInfo.nPU==0) EventInfo.nPU = ipu->getPU_NumInteractions(); // needed in case getPU_zpositions() is empty
     }
 
   //------------------------------------------------------
@@ -299,21 +324,17 @@ void BTagAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
     edm::Handle<reco::GenParticleCollection> genParticles;
     iEvent.getByLabel ("genParticles", genParticles);
 
-//$$
     EventInfo.GenPVz = -1000.;
-//$$
 
     for (size_t i = 0; i < genParticles->size(); ++i) {
       const GenParticle & genIt = (*genParticles)[i];
       int ID = abs(genIt.pdgId());
       unsigned int nDaughters = genIt.numberOfDaughters();
 
-//$$
-      if ( genIt.status() == 3 ) EventInfo.GenPVz = genIt.vz();
-//$$
+      if ( isHardProcess(genIt.status()) ) EventInfo.GenPVz = genIt.vz();
 
-      // prompt b and c
-      if ( (ID == 4 || ID == 5) && genIt.status() == 3 ) {
+      // prompt parton
+      if ( isHardProcess(genIt.status()) && genIt.p4().pt() > 10. ) {
         EventInfo.Genquark_pT[EventInfo.nGenquark]     = genIt.p4().pt();
         EventInfo.Genquark_eta[EventInfo.nGenquark]    = genIt.p4().eta();
         EventInfo.Genquark_phi[EventInfo.nGenquark]    = genIt.p4().phi();
@@ -357,9 +378,7 @@ void BTagAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
         }
       }
 
-//$$
       if ( (ID/100)%10 == 5 || (ID/1000)%10 == 5 ) AreBHadrons = true;
-//$$
 //       // Primary b Hadrons
 //       if ( (ID/100)%10 == 5 || (ID/1000)%10 == 5 ) {
 //         //  cout << " pdgId " << genIt.pdgId()  << " pT " << genIt.p4().pt() << " mother " << mother->pdgId() << endl;
@@ -379,7 +398,6 @@ void BTagAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
 //         EventInfo.BHadron_hasBdaughter[EventInfo.nBHadrons] = hasBHadronDaughter;
 //         ++EventInfo.nBHadrons;
 //       }
-//$$
 
       // Final c Hadrons
       if ( (ID/100)%10 == 4 || (ID/1000)%10 == 4 ) {
@@ -400,13 +418,7 @@ void BTagAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
 	  EventInfo.DHadron_mass[EventInfo.nDHadrons]  = genIt.mass();
 	  EventInfo.DHadron_pdgID[EventInfo.nDHadrons] = genIt.pdgId();
 
-	  EventInfo.DHadron_vx[EventInfo.nDHadrons] = genIt.vx();
-          EventInfo.DHadron_vy[EventInfo.nDHadrons] = genIt.vy();
-          EventInfo.DHadron_vz[EventInfo.nDHadrons] = genIt.vz();
-
-//$$
 	  int nCharged = 0;
-//$$
 	  // Loop on daughters
 	  int numberChargedDaughters = 0;
 	  for (unsigned int d=0; d<nDaughters; d++) {
@@ -421,7 +433,6 @@ void BTagAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
 	    }
 	    EventInfo.nDaughters++;
 	    if ( daughter->charge() != 0 ) numberChargedDaughters++;
-//$$
 	    // charged track multiplicity
 	    unsigned int nDaughters2 = daughter->numberOfDaughters();
 	    if (nDaughters2 == 0 && daughter->charge() != 0
@@ -444,15 +455,12 @@ void BTagAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
 		} // D -> X -> X -> X -> X
 	      } // D -> X -> X -> X
 	    } // D -> X -> X
-//$$
 	  } // loop on daughters from final c hadron
 
 	  EventInfo.DHadron_nDaughters[EventInfo.nDHadrons] = nDaughters;
 	  EventInfo.DHadron_nChargedDaughters[EventInfo.nDHadrons] = numberChargedDaughters;
-//$$
 	  EventInfo.DHadron_nCharged[EventInfo.nDHadrons] = nCharged;
 // cout << " D hadron " << EventInfo.nDHadrons << "  id " << EventInfo.DHadron_pdgID[EventInfo.nDHadrons] << "  pT " << EventInfo.DHadron_pT[EventInfo.nDHadrons] << "  eta " << EventInfo.DHadron_eta[EventInfo.nDHadrons] << "  phi " << EventInfo.DHadron_phi[EventInfo.nDHadrons] << endl;
-//$$
 	  EventInfo.nDHadrons++;
 	} // final c hadron
       } // c hadron
@@ -517,7 +525,6 @@ void BTagAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
        }
       }
 
-//$$
       // V0: K0s and Lambda
       if ( ID == 310 || ID == 3122 ) {
 	 int nCharged = 0;
@@ -552,11 +559,9 @@ void BTagAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
 	   EventInfo.nGenV0++;
 	 }
       }
-//$$
 
     } // end loop on generated particles
 
-//$$
   //------------------------------------------------------
   // generated particles: looking for b hadrons only
   //------------------------------------------------------
@@ -698,7 +703,6 @@ void BTagAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
       } // b hadron
     } // end loop on generated particles
     }
-//$$
 
   //------------------------------------------------------
   // simulated PV
@@ -816,9 +820,7 @@ void BTagAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
   }
   //   GlobalPoint Pv_point = GlobalPoint((*pv).x(), (*pv).y(), (*pv).z());
   EventInfo.PVz = (*primaryVertex)[0].z();
-//$$
   EventInfo.PVez = (*primaryVertex)[0].zError();
-//$$
 
   EventInfo.nPV=0;
   for (unsigned int i = 0; i< primaryVertex->size() ; ++i) {
@@ -883,6 +885,50 @@ void BTagAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
     thelepton2.SetPtEtaPhiM(EventInfo.lepton2_pT, EventInfo.lepton2_eta, EventInfo.lepton2_phi, 0.);
   }
 
+  //------------------------------------------------------
+  // All tracks info
+  //------------------------------------------------------
+  edm::Handle<reco::TrackCollection> tracksHandle;
+  if( produceAllTrackTree_ )
+  {
+    iEvent.getByLabel(tracksColl_,tracksHandle);
+
+    for(reco::TrackCollection::const_iterator trk = tracksHandle->begin(); trk != tracksHandle->end(); ++trk)
+    {
+      EventInfo.TrkAll_d0[EventInfo.nTrkAll]        = trk->d0();
+      EventInfo.TrkAll_dz[EventInfo.nTrkAll]        = trk->dz();
+      EventInfo.TrkAll_p[EventInfo.nTrkAll]         = trk->p();
+      EventInfo.TrkAll_pt[EventInfo.nTrkAll]        = trk->pt();
+      EventInfo.TrkAll_eta[EventInfo.nTrkAll]       = trk->eta();
+      EventInfo.TrkAll_phi[EventInfo.nTrkAll]       = trk->phi();
+      EventInfo.TrkAll_chi2[EventInfo.nTrkAll]      = trk->normalizedChi2();
+      EventInfo.TrkAll_charge[EventInfo.nTrkAll]    = trk->charge();
+      EventInfo.TrkAll_nHitAll[EventInfo.nTrkAll]   = trk->numberOfValidHits();
+      EventInfo.TrkAll_nHitPixel[EventInfo.nTrkAll] = trk->hitPattern().numberOfValidPixelHits();
+      EventInfo.TrkAll_nHitStrip[EventInfo.nTrkAll] = trk->hitPattern().numberOfValidStripHits();
+      EventInfo.TrkAll_nHitTIB[EventInfo.nTrkAll]   = trk->hitPattern().numberOfValidStripTIBHits();
+      EventInfo.TrkAll_nHitTID[EventInfo.nTrkAll]   = trk->hitPattern().numberOfValidStripTIDHits();
+      EventInfo.TrkAll_nHitTOB[EventInfo.nTrkAll]   = trk->hitPattern().numberOfValidStripTOBHits();
+      EventInfo.TrkAll_nHitTEC[EventInfo.nTrkAll]   = trk->hitPattern().numberOfValidStripTECHits();
+      EventInfo.TrkAll_nHitPXB[EventInfo.nTrkAll]   = trk->hitPattern().numberOfValidPixelBarrelHits();
+      EventInfo.TrkAll_nHitPXF[EventInfo.nTrkAll]   = trk->hitPattern().numberOfValidPixelEndcapHits();
+      EventInfo.TrkAll_isHitL1[EventInfo.nTrkAll]   = trk->hitPattern().hasValidHitInFirstPixelBarrel();
+      EventInfo.TrkAll_nSiLayers[EventInfo.nTrkAll] = trk->hitPattern().trackerLayersWithMeasurement();
+      EventInfo.TrkAll_nPxLayers[EventInfo.nTrkAll] = trk->hitPattern().pixelLayersWithMeasurement();
+
+      reco::TrackRef trkRef(tracksHandle, trk - tracksHandle->begin() );
+
+      setTracksPV(trkRef, primaryVertex,
+                  EventInfo.TrkAll_PV[EventInfo.nTrkAll],
+                  EventInfo.TrkAll_PVweight[EventInfo.nTrkAll]);
+      ++EventInfo.nTrkAll;
+    }
+  }
+  //------------------------------------------------------
+
+  //------------------------------------------------------
+  // Jet info
+  //------------------------------------------------------
   int iJetColl = 0 ;
   //// Do jets
   processJets(jetsColl, fatjetsColl, iEvent, iSetup, fatJetToPrunedFatJetMap, iJetColl) ;
@@ -890,6 +936,7 @@ void BTagAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
     iJetColl = 1 ;
     processJets(fatjetsColl, jetsColl, iEvent, iSetup, fatJetToPrunedFatJetMap, iJetColl) ;
   }
+  //------------------------------------------------------
 
   //// Fill TTree
   if ( EventInfo.BitTrigger > 0 || EventInfo.Run < 0 ) {
@@ -1005,9 +1052,8 @@ void BTagAnalyzer::processJets(const edm::Handle<PatJetCollection>& jetsColl, co
       }
     }
 
-//$$$$
     int subjet1Idx = -1, subjet2Idx = -1;
-//$$$$
+
     if ( runSubJets_ && iJetColl == 1 )
     {
       // N-subjettiness
@@ -1035,7 +1081,6 @@ void BTagAnalyzer::processJets(const edm::Handle<PatJetCollection>& jetsColl, co
       JetInfo[iJetColl].Jet_phiPruned[JetInfo[iJetColl].nJet]  = fatJetToPrunedFatJetMap.find(&(*pjet))->second->phi();
       JetInfo[iJetColl].Jet_massPruned[JetInfo[iJetColl].nJet] = fatJetToPrunedFatJetMap.find(&(*pjet))->second->mass();
 
-//$$$$      int subjet1Idx=-1, subjet2Idx=-1;
       for( PatJetCollection::const_iterator jIt = jetsColl2->begin(); jIt != jetsColl2->end(); ++jIt )
       {
         if( &(*jIt) == fatJetToPrunedFatJetMap.find(&(*pjet))->second->daughter(0) ) subjet1Idx = int( jIt - jetsColl2->begin() );
@@ -1083,12 +1128,12 @@ void BTagAnalyzer::processJets(const edm::Handle<PatJetCollection>& jetsColl, co
 
     // Loop on Selected Tracks
 
-    const edm::RefVector<reco::TrackCollection>  &selected_tracks( pjet->tagInfoTrackIP("impactParameter")->selectedTracks() );
-    const edm::RefVector<reco::TrackCollection>  &no_sel_tracks( pjet->tagInfoTrackIP("impactParameter")->tracks() );
+    const reco::TrackRefVector & selectedTracks( pjet->tagInfoTrackIP("impactParameter")->selectedTracks() );
+    const reco::TrackRefVector & tracks( pjet->tagInfoTrackIP("impactParameter")->tracks() );
 
-    int ntagtracks;
-    if (use_selected_tracks_) ntagtracks = pjet->tagInfoTrackIP("impactParameter")->probabilities(0).size();
-    else ntagtracks=no_sel_tracks.size();
+    int ntagtracks = 0;
+    if (useSelectedTracks_) ntagtracks = selectedTracks.size();
+    else ntagtracks = tracks.size();
 
     JetInfo[iJetColl].Jet_ntracks[JetInfo[iJetColl].nJet] = ntagtracks;
 
@@ -1096,21 +1141,28 @@ void BTagAnalyzer::processJets(const edm::Handle<PatJetCollection>& jetsColl, co
     JetInfo[iJetColl].Jet_nFirstTrkInc[JetInfo[iJetColl].nJet] = JetInfo[iJetColl].nTrkInc;
     int k=0;
 
-//$$
     int nseltracks = 0;
-//$$$$
     int nsharedtracks = 0;
-//$$$$
 
-    unsigned int trackSize = selected_tracks.size();
-    if ( !use_selected_tracks_ ) trackSize = no_sel_tracks.size();
+    unsigned int trackSize = selectedTracks.size();
+    if ( !useSelectedTracks_ ) trackSize = tracks.size();
 
     if ( allowJetSkipping_ && trackSize==0 ) continue;
+
     for (unsigned int itt=0; itt < trackSize; ++itt)
     {
       reco::Track  ptrack;
-      if(use_selected_tracks_) ptrack = *selected_tracks[itt];
-      else ptrack= *no_sel_tracks[itt];
+      reco::TrackRef  ptrackRef;
+      if(useSelectedTracks_) 
+      {
+        ptrack = *(selectedTracks[itt]);
+        ptrackRef = selectedTracks[itt];
+      }
+      else
+      {
+        ptrack = *(tracks[itt]);
+        ptrackRef = tracks[itt];
+      }
 
       TransientTrack transientTrack = trackBuilder->build(ptrack);
       GlobalVector direction(pjet->px(), pjet->py(), pjet->pz());
@@ -1141,12 +1193,9 @@ void BTagAnalyzer::processJets(const edm::Handle<PatJetCollection>& jetsColl, co
       bool pass_cut_trk = false;
       if (std::fabs(distJetAxis) < 0.07 && decayLength < 5.0) pass_cut_trk = true;
 
-//$$
       if (std::fabs(distJetAxis) < 0.07 && decayLength < 5.0
                                         && deltaR < 0.3) nseltracks++;
-//$$
 
-//$$$$
       if ( runSubJets_ && iJetColl == 1 && pass_cut_trk && subjet1Idx >= 0 && subjet2Idx >= 0 ) {
 
         deta = ptrack.eta() - JetInfo[0].Jet_eta[subjet1Idx];
@@ -1161,12 +1210,11 @@ void BTagAnalyzer::processJets(const edm::Handle<PatJetCollection>& jetsColl, co
 
         if ( dR1 < 0.3 && dR2 < 0.3 ) nsharedtracks++;
       }
-//$$$$
 
       // track selection
-      if ( (use_selected_tracks_ && pass_cut_trk) ||  !use_selected_tracks_) {
+      if ( (useSelectedTracks_ && pass_cut_trk) ||  !useSelectedTracks_) {
 
-        if ( use_selected_tracks_ ) {
+        if ( useSelectedTracks_ ) {
           JetInfo[iJetColl].Track_IP2D[JetInfo[iJetColl].nTrack]     = pjet->tagInfoTrackIP("impactParameter")->impactParameterData()[k].ip2d.value();
           JetInfo[iJetColl].Track_IP2Dsig[JetInfo[iJetColl].nTrack]  = pjet->tagInfoTrackIP("impactParameter")->impactParameterData()[k].ip2d.significance();
           JetInfo[iJetColl].Track_IP[JetInfo[iJetColl].nTrack]       = pjet->tagInfoTrackIP("impactParameter")->impactParameterData()[k].ip3d.value();
@@ -1208,17 +1256,29 @@ void BTagAnalyzer::processJets(const edm::Handle<PatJetCollection>& jetsColl, co
         JetInfo[iJetColl].Track_nHitPXF[JetInfo[iJetColl].nTrack]  = ptrack.hitPattern().numberOfValidPixelEndcapHits();
         JetInfo[iJetColl].Track_isHitL1[JetInfo[iJetColl].nTrack]  = ptrack.hitPattern().hasValidHitInFirstPixelBarrel();
 
-        JetInfo[iJetColl].Track_PV[JetInfo[iJetColl].nTrack] = 0;
-        JetInfo[iJetColl].Track_SV[JetInfo[iJetColl].nTrack] = 0;
-        JetInfo[iJetColl].Track_PVweight[JetInfo[iJetColl].nTrack] = 0.;
-        JetInfo[iJetColl].Track_SVweight[JetInfo[iJetColl].nTrack] = 0.;
+        setTracksPV(ptrackRef, primaryVertex,
+                    JetInfo[iJetColl].Track_PV[JetInfo[iJetColl].nTrack],
+                    JetInfo[iJetColl].Track_PVweight[JetInfo[iJetColl].nTrack]);
 
-        JetInfo[iJetColl].Track_isfromSV[JetInfo[iJetColl].nTrack] = 0.;
+        if( pjet->hasTagInfo("secondaryVertex") )
+        {
+          setTracksSV(ptrackRef, pjet->tagInfoSecondaryVertex("secondaryVertex"),
+                      JetInfo[iJetColl].Track_isfromSV[JetInfo[iJetColl].nTrack],
+                      JetInfo[iJetColl].Track_SV[JetInfo[iJetColl].nTrack],
+                      JetInfo[iJetColl].Track_SVweight[JetInfo[iJetColl].nTrack]);
+        }
+        else
+        {
+          JetInfo[iJetColl].Track_isfromSV[JetInfo[iJetColl].nTrack] = 0;
+          JetInfo[iJetColl].Track_SV[JetInfo[iJetColl].nTrack] = -1;
+          JetInfo[iJetColl].Track_SVweight[JetInfo[iJetColl].nTrack] = 0.;
+        }
+
         JetInfo[iJetColl].Track_history[JetInfo[iJetColl].nTrack] = 0;
 
         if ( useTrackHistory_ && !isData_ ) {
           TrackCategories::Flags theFlag ;
-          if(use_selected_tracks_) theFlag  = classifier_.evaluate( pjet->tagInfoTrackIP("impactParameter")->selectedTracks()[k] ).flags();
+          if(useSelectedTracks_) theFlag  = classifier_.evaluate( pjet->tagInfoTrackIP("impactParameter")->selectedTracks()[k] ).flags();
           else                     theFlag  = classifier_.evaluate( pjet->tagInfoTrackIP("impactParameter")->tracks()[k] ).flags();
 
           if ( theFlag[TrackCategories::BWeakDecay] )	       JetInfo[iJetColl].Track_history[JetInfo[iJetColl].nTrack] += pow(10, -1 + 1);
@@ -1367,7 +1427,7 @@ void BTagAnalyzer::processJets(const edm::Handle<PatJetCollection>& jetsColl, co
 
         ++JetInfo[iJetColl].nTrack;
       }
-      if ( use_selected_tracks_ ) JetInfo[iJetColl].Jet_ntracks[JetInfo[iJetColl].nJet] = JetInfo[iJetColl].nTrack-JetInfo[iJetColl].Jet_nFirstTrack[JetInfo[iJetColl].nJet];
+      if ( useSelectedTracks_ ) JetInfo[iJetColl].Jet_ntracks[JetInfo[iJetColl].nJet] = JetInfo[iJetColl].nTrack-JetInfo[iJetColl].Jet_nFirstTrack[JetInfo[iJetColl].nJet];
 
       if ( producePtRelTemplate_ ) {
         if ( ptrack.quality(reco::TrackBase::highPurity)
@@ -1382,10 +1442,8 @@ void BTagAnalyzer::processJets(const edm::Handle<PatJetCollection>& jetsColl, co
             && ptrack.trackerExpectedHitsOuter().numberOfHits() <= 2
             && ptrack.dz()-(*pv).z() < 1. ) {
 
-//$$
           if ( iJetColl != 1 ) {
-//$$
-            if ( use_selected_tracks_ ) {
+            if ( useSelectedTracks_ ) {
               JetInfo[iJetColl].TrkInc_IP[JetInfo[iJetColl].nTrkInc]    = pjet->tagInfoTrackIP("impactParameter")->impactParameterData()[k].ip3d.value();
               JetInfo[iJetColl].TrkInc_IPsig[JetInfo[iJetColl].nTrkInc] = pjet->tagInfoTrackIP("impactParameter")->impactParameterData()[k].ip3d.significance();
             }
@@ -1395,21 +1453,17 @@ void BTagAnalyzer::processJets(const edm::Handle<PatJetCollection>& jetsColl, co
             JetInfo[iJetColl].TrkInc_ptrel[JetInfo[iJetColl].nTrkInc] = calculPtRel( ptrack , *pjet);
 
             ++JetInfo[iJetColl].nTrkInc;
-//$$
           }
-//$$
         }
       }
       ++k;
 
     } //// end loop on tracks
 
-//$$
     JetInfo[iJetColl].Jet_nseltracks[JetInfo[iJetColl].nJet] = nseltracks;
-//$$$$
+
     if ( runSubJets_ && iJetColl == 1 )
       JetInfo[iJetColl].Jet_nsharedtracks[JetInfo[iJetColl].nJet] = nsharedtracks;
-//$$$$
 
     JetInfo[iJetColl].Jet_nLastTrack[JetInfo[iJetColl].nJet]   = JetInfo[iJetColl].nTrack;
     JetInfo[iJetColl].Jet_nLastTrkInc[JetInfo[iJetColl].nJet]  = JetInfo[iJetColl].nTrkInc;
@@ -1622,10 +1676,6 @@ void BTagAnalyzer::processJets(const edm::Handle<PatJetCollection>& jetsColl, co
     JetInfo[iJetColl].Jet_VtxCat[JetInfo[iJetColl].nJet] = JetVtxCategory;
 
     std::vector<TrackIPTagInfo::TrackIPData>  ipdata = pjet->tagInfoTrackIP("impactParameter")->impactParameterData();
-
-    TrackRefVector tracks( pjet->tagInfoTrackIP("impactParameter")->selectedTracks() );
-
-
     std::vector<std::size_t> indexes( sortedIndexes(ipdata) );
 
     TrackCategories::Flags flags1P;
@@ -1639,12 +1689,12 @@ void BTagAnalyzer::processJets(const edm::Handle<PatJetCollection>& jetsColl, co
     if ( useTrackHistory_ && indexes.size() != 0 && !isData_ ) {
 
       idSize = indexes.size();
-      flags1P = classifier_.evaluate( tracks[indexes[0]] ).flags();
-      if(idSize > 1) flags2P = classifier_.evaluate( tracks[indexes[1]] ).flags();
-      if(idSize > 2) flags3P = classifier_.evaluate( tracks[indexes[2]] ).flags();
-      flags1N = classifier_.evaluate( tracks[indexes[idSize-1]] ).flags();
-      if(idSize > 1) flags2N = classifier_.evaluate( tracks[indexes[idSize-2]] ).flags();
-      if(idSize > 2) flags3N = classifier_.evaluate( tracks[indexes[idSize-3]] ).flags();
+      flags1P = classifier_.evaluate( selectedTracks[indexes[0]] ).flags();
+      if(idSize > 1) flags2P = classifier_.evaluate( selectedTracks[indexes[1]] ).flags();
+      if(idSize > 2) flags3P = classifier_.evaluate( selectedTracks[indexes[2]] ).flags();
+      flags1N = classifier_.evaluate( selectedTracks[indexes[idSize-1]] ).flags();
+      if(idSize > 1) flags2N = classifier_.evaluate( selectedTracks[indexes[idSize-2]] ).flags();
+      if(idSize > 2) flags3N = classifier_.evaluate( selectedTracks[indexes[idSize-3]] ).flags();
     }
 
     JetInfo[iJetColl].Jet_Ip2P[JetInfo[iJetColl].nJet]   = pjet->bDiscriminator(trackCHEBJetTags_.c_str());
@@ -1791,9 +1841,9 @@ void BTagAnalyzer::processJets(const edm::Handle<PatJetCollection>& jetsColl, co
     }
     JetInfo[iJetColl].Jet_SvxMass[JetInfo[iJetColl].nJet] = SVmass;
 
-//$$    if ( produceJetProbaTree_  &&  JetInfo[iJetColl].Jet_SV_multi[JetInfo[iJetColl].nJet]> 0) {
-    if ( ( produceJetProbaTree_ || use_selected_tracks_ )
-         && JetInfo[iJetColl].Jet_SV_multi[JetInfo[iJetColl].nJet] > 0) {
+    // if secondary vertices present
+    if ( JetInfo[iJetColl].Jet_SV_multi[JetInfo[iJetColl].nJet] > 0 )
+    {
 
       JetInfo[iJetColl].SV_x[JetInfo[iJetColl].nSV]    = pjet->tagInfoSecondaryVertex("secondaryVertex")->secondaryVertex(0).x();
       JetInfo[iJetColl].SV_y[JetInfo[iJetColl].nSV]    = pjet->tagInfoSecondaryVertex("secondaryVertex")->secondaryVertex(0).y();
@@ -1836,9 +1886,9 @@ void BTagAnalyzer::processJets(const edm::Handle<PatJetCollection>& jetsColl, co
 
       Bool_t hasRefittedTracks = vertex.hasRefittedTracks();
 
-      TrackRefVector tracks = pjet->tagInfoSecondaryVertex("secondaryVertex")->vertexTracks(0);
-      for(TrackRefVector::const_iterator track = tracks.begin();
-          track != tracks.end(); ++track) {
+      TrackRefVector vertexTracks = pjet->tagInfoSecondaryVertex("secondaryVertex")->vertexTracks(0);
+      for(TrackRefVector::const_iterator track = vertexTracks.begin();
+          track != vertexTracks.end(); ++track) {
         Double_t w = pjet->tagInfoSecondaryVertex("secondaryVertex")->trackWeight(0, *track);
         if (w < 0.5)
           continue;
@@ -1884,10 +1934,9 @@ void BTagAnalyzer::processJets(const edm::Handle<PatJetCollection>& jetsColl, co
       JetInfo[iJetColl].SV_totCharge[JetInfo[iJetColl].nSV]=totcharge;
       // ------------------------end added ---------------------------------------------------------------------------------------//
 
-      setTracksPV( &pjet->tagInfoSecondaryVertex("secondaryVertex")->secondaryVertex(0), false, iJetColl );
       ++JetInfo[iJetColl].nSV;
 
-    } //// if produceJetProbaTree_
+    } //// if secondary vertices present
     JetInfo[iJetColl].Jet_nLastSV[JetInfo[iJetColl].nJet] = JetInfo[iJetColl].nSV;
 
 
@@ -2176,26 +2225,76 @@ float BTagAnalyzer::calculPtRel(const reco::Track& theMuon, const pat::Jet& theJ
 }
 
 
-void BTagAnalyzer::setTracksPV( const reco::Vertex *pv, const bool isPV, const int iJetColl )
+void BTagAnalyzer::setTracksPV( const reco::TrackRef & trackRef, const edm::Handle<reco::VertexCollection> & pvHandle, int & iPV, float & PVweight )
 {
-  for (reco::Vertex::trackRef_iterator itt = (*pv).tracks_begin(); itt != (*pv).tracks_end(); ++itt) {
-    for (int i=0; i<JetInfo[iJetColl].nTrack; ++i) {
-      if ( fabs( (&**itt)->pt() - JetInfo[iJetColl].Track_pt[i] )  < 1.e-5 ) {
-        if ( isPV ) {
-          JetInfo[iJetColl].Track_PV[i] = EventInfo.nPV + 1;
-          JetInfo[iJetColl].Track_PVweight[i] = (*pv).trackWeight(*itt);
-        }
-        else {
-          JetInfo[iJetColl].Track_isfromSV[i]= 1;
-          JetInfo[iJetColl].Track_SV[i] = JetInfo[iJetColl].nSV + 1;
-          JetInfo[iJetColl].Track_SVweight[i] = (*pv).trackWeight(*itt);
-          //   std::cout << " track " << i << " at SV " << JetInfo[iJetColl].Track_SV[i] << std::endl;
+  iPV = -1;
+  PVweight = 0.;
+
+  const reco::TrackBaseRef trackBaseRef( trackRef );
+
+  typedef reco::VertexCollection::const_iterator IV;
+  typedef reco::Vertex::trackRef_iterator IT;
+
+  for(IV iv=pvHandle->begin(); iv!=pvHandle->end(); ++iv)
+  {
+    const reco::Vertex & vtx = *iv;
+    // loop over tracks in vertices
+    for(IT it=vtx.tracks_begin(); it!=vtx.tracks_end(); ++it)
+    {
+      const reco::TrackBaseRef & baseRef = *it;
+      // one of the tracks in the vertex is the same as the track considered in the function
+      if( baseRef == trackBaseRef )
+      {
+        float w = vtx.trackWeight(baseRef);
+        // select the vertex for which the track has the highest weight
+        if( w > PVweight )
+        {
+          PVweight = w;
+          iPV = ( iv - pvHandle->begin() );
+          break;
         }
       }
     }
   }
+
 }
 
+
+void BTagAnalyzer::setTracksSV( const reco::TrackRef & trackRef, const reco::SecondaryVertexTagInfo * svTagInfo, int & isFromSV, int & iSV, float & SVweight )
+{
+  isFromSV = 0;
+  iSV = -1;
+  SVweight = 0.;
+
+  const reco::TrackBaseRef trackBaseRef( trackRef );
+
+  typedef reco::Vertex::trackRef_iterator IT;
+
+  size_t nSV = svTagInfo->nVertices();
+  for(size_t iv=0; iv<nSV; ++iv)
+  {
+    const reco::Vertex & vtx = svTagInfo->secondaryVertex(iv);
+    // loop over tracks in vertices
+    for(IT it=vtx.tracks_begin(); it!=vtx.tracks_end(); ++it)
+    {
+      const reco::TrackBaseRef & baseRef = *it;
+      // one of the tracks in the vertex is the same as the track considered in the function
+      if( baseRef == trackBaseRef )
+      {
+        float w = vtx.trackWeight(baseRef);
+        // select the vertex for which the track has the highest weight
+        if( w > SVweight )
+        {
+          SVweight = w;
+          isFromSV = 1;
+          iSV = iv;
+          break;
+        }
+      }
+    }
+  }
+
+}
 
 // ------------ method called once each job just before starting event loop  ------------
 void BTagAnalyzer::beginJob() {
@@ -2495,7 +2594,7 @@ int BTagAnalyzer::isFromGSP(const reco::Candidate* c)
   if( c->numberOfMothers() == 1 ) {
     const reco::Candidate* dau = c;
     const reco::Candidate* mom = c->mother();
-    while( dau->numberOfMothers() == 1 && !( mom->status()==3 && (abs(mom->pdgId())==4 || abs(mom->pdgId())==5) ) ) {
+    while( dau->numberOfMothers() == 1 && !( isHardProcess(mom->status()) && (abs(mom->pdgId())==4 || abs(mom->pdgId())==5) ) ) {
       if( abs(mom->pdgId())==21 )
       {
         isFromGSP = 1;
@@ -2507,6 +2606,24 @@ int BTagAnalyzer::isFromGSP(const reco::Candidate* c)
   }
 
   return isFromGSP;
+}
+
+
+bool BTagAnalyzer::isHardProcess(const int status)
+{
+  // if Pythia8
+  if( hadronizerType_ & (1 << 1) )
+  {
+    if( status>=21 && status<=29 )
+      return true;
+  }
+  else // assuming Pythia6
+  {
+    if( status==3 )
+      return true;
+  }
+
+  return false;
 }
 
 // -------------------------------------------------------------------------

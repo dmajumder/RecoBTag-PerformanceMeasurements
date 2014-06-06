@@ -693,7 +693,7 @@ if options.useTTbarFilter:
     getattr(process,'pfIsolatedElectrons'+postfix).isolationCut = cms.double(9999.)
 
     ## Electron ID
-    process.load("EGamma.EGammaAnalysisTools.electronIdMVAProducer_cfi")
+    process.load("EgammaAnalysis.ElectronTools.electronIdMVAProducer_cfi")
     process.eidMVASequence = cms.Sequence( process.mvaTrigV0 + process.mvaNonTrigV0 )
 
     getattr(process,'patElectrons'+postfix).electronIDSources.mvaTrigV0    = cms.InputTag("mvaTrigV0")
@@ -744,11 +744,32 @@ if not options.runOnData:
 
 #-------------------------------------
 process.load("RecoBTag.PerformanceMeasurements.BTagAnalyzer_cff")
-
-process.btagana.use_selected_tracks   = True  ## False if you want to run on all tracks : used for commissioning studies
+# The following combinations should be considered:
+# For b-tagging performance measurements:
+#   process.btagana.useSelectedTracks    = True
+#   process.btagana.useTrackHistory      = False (or True for Mistag systematics with GEN-SIM-RECODEBUG samples)
+#   process.btagana.produceJetTrackTree  = False
+#   process.btagana.produceAllTrackTree  = False
+#   process.btagana.producePtRelTemplate = False (or True for PtRel fit studies)
+# or data/MC validation of jets, tracks and SVs:
+#   process.btagana.useSelectedTracks    = False (or True for JP calibration)
+#   process.btagana.useTrackHistory      = False
+#   process.btagana.produceJetTrackTree  = True
+#   process.btagana.produceAllTrackTree  = False
+#   process.btagana.producePtRelTemplate = False
+# or general tracks, PV and jet performance studies:
+#   process.btagana.useSelectedTracks    = True
+#   process.btagana.useTrackHistory      = False
+#   process.btagana.produceJetTrackTree  = False
+#   process.btagana.produceAllTrackTree  = True
+#   process.btagana.producePtRelTemplate = False
+#------------------
+process.btagana.useSelectedTracks     = True  ## False if you want to run on all tracks : for commissioning studies
 process.btagana.useTrackHistory       = False ## Can only be used with GEN-SIM-RECODEBUG files
-process.btagana.produceJetProbaTree   = False ## True if you want to keep track and SV info! : used for commissioning studies
+process.btagana.produceJetTrackTree   = False ## True if you want to keep info for tracks associated to jets : for commissioning studies
+process.btagana.produceAllTrackTree   = False ## True if you want to keep info for tracks associated to jets : for commissioning studies
 process.btagana.producePtRelTemplate  = options.producePtRelTemplate  ## True for performance studies
+#------------------
 process.btagana.primaryVertexColl     = cms.InputTag('goodOfflinePrimaryVertices')
 process.btagana.Jets                  = cms.InputTag('selectedPatJets'+postfix)
 process.btagana.patMuonCollectionName = cms.InputTag('selectedPatMuons')
@@ -756,7 +777,7 @@ process.btagana.use_ttbar_filter      = cms.bool(options.useTTbarFilter)
 process.btagana.triggerTable          = cms.InputTag('TriggerResults::HLT') # Data and MC
 
 process.btaganaSubJets = process.btagana.clone(
-    produceJetProbaTree = cms.bool(True),
+    produceJetTrackTree = cms.bool(True),
     allowJetSkipping    = cms.bool(False),
     Jets                = cms.InputTag('selectedPatJetsCA8PrunedSubJetsPF'),
     FatJets             = cms.InputTag('selectedPatJets'),

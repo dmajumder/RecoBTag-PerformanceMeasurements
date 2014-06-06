@@ -161,7 +161,9 @@ class BTagAnalyzer : public edm::EDAnalyzer
 
     int matchMuon(const edm::RefToBase<reco::Track>& theMuon, const edm::View<reco::Muon>& muons);
 
-    void setTracksPV( const reco::Vertex *pv, const bool isPV, const int );
+    void setTracksPV( const reco::TrackRef & trackRef, const edm::Handle<reco::VertexCollection> & pvHandle, int & iPV, float & PVweight );
+
+    void setTracksSV( const reco::TrackRef & trackRef, const reco::SecondaryVertexTagInfo *, int & isFromSV, int & iSV, float & SVweight );
 
     int getMuonTk(double pt, const int);
     bool NameCompatible(const std::string& pattern, const std::string& name);
@@ -175,6 +177,8 @@ class BTagAnalyzer : public edm::EDAnalyzer
 
     int isFromGSP(const reco::Candidate* c);
 
+    bool isHardProcess(const int status);
+
     // ----------member data ---------------------------
     std::string outputFile_;
     //std::vector< std::string > moduleLabel_;
@@ -182,6 +186,7 @@ class BTagAnalyzer : public edm::EDAnalyzer
     bool runSubJets_ ;
     bool allowJetSkipping_ ;
 
+    edm::InputTag src_;  // Generator/handronizer module label
     edm::InputTag muonCollectionName_;
     edm::InputTag patMuonCollectionName_;
     edm::InputTag triggerTable_;
@@ -248,6 +253,7 @@ class BTagAnalyzer : public edm::EDAnalyzer
     std::string softPFElectronTagInfos_;
 
     edm::InputTag primaryVertexColl_;
+    edm::InputTag tracksColl_;
 
     bool useTrackHistory_;
     TFile*  rootFile_;
@@ -256,8 +262,9 @@ class BTagAnalyzer : public edm::EDAnalyzer
 
     int selTagger_;
     bool isData_;
-    bool use_selected_tracks_;
-    bool produceJetProbaTree_;
+    bool useSelectedTracks_;
+    bool produceJetTrackTree_;
+    bool produceAllTrackTree_;
     bool producePtRelTemplate_;
 
     bool use_ttbar_filter_;
@@ -314,6 +321,9 @@ class BTagAnalyzer : public edm::EDAnalyzer
 
     int cap0, cap1, cap2, cap3, cap4, cap5, cap6, cap7, cap8;
     int can0, can1, can2, can3, can4, can5, can6, can7, can8;
+
+    // Generator/hadronizer type (information stored bitwise)
+    unsigned int hadronizerType_;
 };
 
 #endif

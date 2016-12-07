@@ -502,7 +502,16 @@ process.source = cms.Source("PoolSource",
 
 if options.miniAOD:
     process.source.fileNames = [
-        '/store/mc/RunIISummer16MiniAODv2/QCD_Pt_80to120_TuneCUETP8M1_13TeV_pythia8/MINIAODSIM/PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v1/70000/06D23EE0-0EB7-E611-9676-A0369F3102B6.root'
+        '/store/mc/RunIISummer16MiniAODv2/QCD_Pt-1000toInf_MuEnrichedPt5_TuneCUETP8M1_13TeV_pythia8/MINIAODSIM/PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v1/80000/0258401F-BBB1-E611-B818-0CC47A5FC679.root', 
+        '/store/mc/RunIISummer16MiniAODv2/QCD_Pt-1000toInf_MuEnrichedPt5_TuneCUETP8M1_13TeV_pythia8/MINIAODSIM/PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v1/80000/02ED65FB-C4B1-E611-B892-78E7D1E4AF92.root', 
+        '/store/mc/RunIISummer16MiniAODv2/QCD_Pt-1000toInf_MuEnrichedPt5_TuneCUETP8M1_13TeV_pythia8/MINIAODSIM/PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v1/80000/06C4A945-CAB1-E611-A07F-0025B3E0216C.root', 
+        '/store/mc/RunIISummer16MiniAODv2/QCD_Pt-1000toInf_MuEnrichedPt5_TuneCUETP8M1_13TeV_pythia8/MINIAODSIM/PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v1/80000/08783C20-BBB1-E611-91FF-002481DE485A.root', 
+        '/store/mc/RunIISummer16MiniAODv2/QCD_Pt-1000toInf_MuEnrichedPt5_TuneCUETP8M1_13TeV_pythia8/MINIAODSIM/PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v1/80000/0A0776C5-CDB1-E611-BA1B-90B11CBCFF9C.root', 
+        '/store/mc/RunIISummer16MiniAODv2/QCD_Pt-1000toInf_MuEnrichedPt5_TuneCUETP8M1_13TeV_pythia8/MINIAODSIM/PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v1/80000/0AAE4A33-D0B1-E611-BD5F-0025905A60D2.root', 
+        '/store/mc/RunIISummer16MiniAODv2/QCD_Pt-1000toInf_MuEnrichedPt5_TuneCUETP8M1_13TeV_pythia8/MINIAODSIM/PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v1/80000/0E89DDED-C1B1-E611-9B12-0025B3E01F20.root', 
+        '/store/mc/RunIISummer16MiniAODv2/QCD_Pt-1000toInf_MuEnrichedPt5_TuneCUETP8M1_13TeV_pythia8/MINIAODSIM/PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v1/80000/16285AAB-86B1-E611-AD44-047D7B416516.root', 
+        '/store/mc/RunIISummer16MiniAODv2/QCD_Pt-1000toInf_MuEnrichedPt5_TuneCUETP8M1_13TeV_pythia8/MINIAODSIM/PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v1/80000/1CFA9ECE-CDB1-E611-84D2-0025B3E0216C.root', 
+        '/store/mc/RunIISummer16MiniAODv2/QCD_Pt-1000toInf_MuEnrichedPt5_TuneCUETP8M1_13TeV_pythia8/MINIAODSIM/PUMoriond17_80X_mcRun2_asymptotic_2016_TrancheIV_v6-v1/80000/20A9AF6C-D0B1-E611-B3A4-0CC47A7C361E.root', 
     ]
     if options.runOnData:
         process.source.fileNames = [

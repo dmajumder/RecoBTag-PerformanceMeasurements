@@ -646,7 +646,7 @@ bTagInfosFat += ([] if options.useLegacyTaggers else ['pfBoostedDoubleSV' + ('CA
 bTagDiscriminators_no_deepFlavour = {i for i in bTagDiscriminators if 'DeepFlavourJetTags' not in i}
 bTagDiscriminatorsFat = copy.deepcopy(bTagDiscriminators_no_deepFlavour)
 ## Add DeepDoubleB tagger to fat jets
-bTagDiscriminatorsFat.update(set(['pfDeepDoubleBJetTags:probH']))
+#bTagDiscriminatorsFat.update(set(['pfDeepDoubleBJetTags:probH']))
 
 if options.runJetClustering:
     options.remakeAllDiscr = True
@@ -747,15 +747,7 @@ process.source = cms.Source("PoolSource",
 
 if options.miniAOD:
     process.source.fileNames = [
-        #/QCD_Pt-1000toInf_MuEnrichedPt5_TuneCP5_13TeV_pythia8/RunIIFall17MiniAOD-94X_mc2017_realistic_v10-v1/MINIAODSIM
-#$$
-#        '/store/relval/CMSSW_10_4_0_mtd3/RelValTTbar_Tauola_14TeV/MINIAODSIM/PU25ns_103X_upgrade2023_realistic_v2_2023D35PU200_1-v2/20000/31C1C942-EC8D-1245-B773-2293F5CC87DB.root'
-#        '/store/relval/CMSSW_10_4_0_mtd3/RelValTTbar_Tauola_14TeV/MINIAODSIM/PU25ns_103X_upgrade2023_realistic_v2_2023D35PU200_2-v2/20000/CEEBB55B-67BC-F54C-9243-8D11EEBCA67F.root'
-#        '/store/relval/CMSSW_10_4_0_mtd3/RelValTTbar_Tauola_14TeV/MINIAODSIM/PU25ns_103X_upgrade2023_realistic_v2_2023D35PU200_3-v2/20000/3CE6CC6E-10D0-354B-8AA6-C22FDA11A181.root',
-#        '/store/relval/CMSSW_10_4_0_mtd3/RelValTTbar_Tauola_14TeV/MINIAODSIM/PU25ns_103X_upgrade2023_realistic_v2_2023D35PU200_3-v2/20000/D083516F-39B8-3947-9013-112F24795E45.root'
-#        '/store/relval/CMSSW_10_4_0_mtd3/RelValTTbar_Tauola_14TeV/MINIAODSIM/PU25ns_103X_upgrade2023_realistic_v2_2023D35PU200_4-v2/20000/39ECB63E-296D-9442-BD46-8F96E4832418.root'
-        '/store/relval/CMSSW_10_4_0_mtd3/RelValTTbar_Tauola_14TeV/MINIAODSIM/PU25ns_103X_upgrade2023_realistic_v2_2023D35PU200_5-v2/20000/A8AD8A25-CDC1-2E4B-A404-E9DB14ECF16A.root'
-#$$
+        'file:VBF_HHTo4B_CV_1_5_C2V_1_C3_1_TuneCP5_PSWeights_14TeV-madgraph-pythia8_Phase2HLTTDRWinter20RECOMiniAOD_NoPU_110X_mcRun4_realistic_v3-v2.root'
     ]
     if options.runOnData:
         process.source.fileNames = [
@@ -966,6 +958,11 @@ process.load("PhysicsTools.PatAlgos.producersLayer1.patCandidates_cff")
 process.load("PhysicsTools.PatAlgos.selectionLayer1.selectedPatCandidates_cff")
 
 from PhysicsTools.PatAlgos.tools.jetTools import *
+
+### DeepAK8 and ParticleNet
+from RecoBTag.MXNet.pfDeepBoostedJet_cff import _pfDeepBoostedJetTagsAll, _pfDeepBoostedJetTagsProbs, _pfDeepBoostedJetTagsMetaDiscrs, _pfMassDecorrelatedDeepBoostedJetTagsProbs, _pfMassDecorrelatedDeepBoostedJetTagsMetaDiscrs
+bTagDiscriminators.update(_pfDeepBoostedJetTagsAll)
+
 ## Updated the default jet collection
 if options.miniAOD and not options.runJetClustering:
     updateJetCollection(

@@ -1,7 +1,8 @@
 common = {
-	'groups' : ['Daniel'],
+	'groups' : ['Devdatta','Daniel'],
 	'eras' : ['Phase2'],
 	'miniAOD' : True,
+  'doBoostedCommissioning': True,
 	'usePuppi' : True,
 	'usePuppiForFatJets' : True,
 	'usePuppiForBTagging' : False,
@@ -9,7 +10,7 @@ common = {
 	'remakeAllDiscr' : True,
 	'maxJetEta' : 4.5,
 	'usePrivateJEC' : False,
-	'jecDBFileMC' : 'PhaseIIFall17_V3_MC', 
+	'jecDBFileMC' : 'PhaseIIFall17_V5b_MC', 
 	#'inputFiles' : ['/store/mc/Phase2HLTTDRWinter20RECOMiniAOD/TT_TuneCP5_14TeV-powheg-pythia8/MINIAODSIM/PU200_110X_mcRun4_realistic_v3-v2/240000/FF22EB3C-0E81-4148-9E24-250AD9D9ABE2.root',],
 	'JPCalibration' : 'JPcalib_MC81X_v0',
 }

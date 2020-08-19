@@ -2758,6 +2758,14 @@ variableList = [
       runOptions  = cms.vstring(),
     ),
     cms.PSet(
+      variable    = cms.string("Jet_DeepAK8"),
+      store       = cms.bool(False),
+      mconly      = cms.bool(False),
+      description = cms.string("Jet_DeepAK8"),
+      requires    = cms.vstring("nJet"),
+      runOptions  = cms.vstring(),
+    ),
+    cms.PSet(
       variable    = cms.string("nTrack"),
       store       = cms.bool(False),
       mconly      = cms.bool(False),

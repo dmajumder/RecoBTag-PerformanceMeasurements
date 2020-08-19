@@ -200,6 +200,7 @@ class JetInfoBranches {
     int   Jet_nFirstTrkEtaRelTagVarCSV[nMaxJets_];
     int   Jet_nLastTrkEtaRelTagVarCSV[nMaxJets_];
     float Jet_DeepDoubleB[nMaxJets_];
+    float Jet_DeepAK8[nMaxJets_];
 
     int   nTrack;
     float Track_dxy[nMaxTrk_];
@@ -1002,6 +1003,7 @@ class JetInfoBranches {
       if(variableParser.isToBeStored(name+"Jet_tau2_vertexNTracks")) tree->Branch((name+"Jet_tau2_vertexNTracks").c_str(),           Jet_tau2_vertexNTracks           ,(name+"Jet_tau2_vertexNTracks["+name+"nJet]/F").c_str()           );
       if(variableParser.isToBeStored(name+"Jet_DoubleSV")) tree->Branch((name+"Jet_DoubleSV").c_str(),         Jet_DoubleSV         ,(name+"Jet_DoubleSV["+name+"nJet]/F").c_str());
       if(variableParser.isToBeStored(name+"Jet_DeepDoubleB")) tree->Branch((name+"Jet_DeepDoubleB").c_str(),      Jet_DeepDoubleB      ,(name+"Jet_DeepDoubleB["+name+"nJet]/F").c_str());
+      if(variableParser.isToBeStored(name+"Jet_DeepAK8")) tree->Branch((name+"Jet_DeepAK8").c_str(),      Jet_DeepAK8      ,(name+"Jet_DeepAK8["+name+"nJet]/F").c_str());
 
 
       if(variableParser.isToBeStored(name+"Track_lengthTau")) tree->Branch((name+"Track_lengthTau").c_str()     ,Track_lengthTau       ,(name+"Track_lengthTau["+name+"nTrack]/F").c_str());
@@ -1523,6 +1525,7 @@ class JetInfoBranches {
       if(variableParser.isToBeStored(name+"Jet_tau2_vertexNTracks")) tree->SetBranchAddress((name+"Jet_tau2_vertexNTracks").c_str(),           Jet_tau2_vertexNTracks                      );
       if(variableParser.isToBeStored(name+"Jet_DoubleSV")) tree->SetBranchAddress((name+"Jet_DoubleSV").c_str(),         Jet_DoubleSV         );
       if(variableParser.isToBeStored(name+"Jet_DeepDoubleB")) tree->SetBranchAddress((name+"Jet_DeepDoubleB").c_str(),      Jet_DeepDoubleB      );
+      if(variableParser.isToBeStored(name+"Jet_DeepAK8")) tree->SetBranchAddress((name+"Jet_DeepAK8").c_str(),      Jet_DeepAK8     );
 
 
       if(variableParser.isToBeStored(name+"Track_lengthTau")) tree->SetBranchAddress((name+"Track_lengthTau").c_str()     ,Track_lengthTau       );

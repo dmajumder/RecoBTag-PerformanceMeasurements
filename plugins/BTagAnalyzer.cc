@@ -332,6 +332,7 @@ private:
 
   std::string doubleSVBJetTags_;
   std::string deepDoubleBJetTags_;
+  std::string deepAK8JetTags_;
 
   std::string cMVABJetTags_;
   std::string cMVAv2BJetTags_;
@@ -659,6 +660,7 @@ BTagAnalyzerT<IPTI,VTX>::BTagAnalyzerT(const edm::ParameterSet& iConfig):
 
   doubleSVBJetTags_ = iConfig.getParameter<std::string>("doubleSVBJetTags");
   deepDoubleBJetTags_ = iConfig.getParameter<std::string>("deepDoubleBJetTags");
+  deepAK8JetTags_ = iConfig.getParameter<std::string>("deepAK8JetTags");
 
   cMVABJetTags_ = iConfig.getParameter<std::string>("cMVABJetTags");
   cMVAv2BJetTags_ = iConfig.getParameter<std::string>("cMVAv2BJetTags");
@@ -1769,7 +1771,7 @@ void BTagAnalyzerT<IPTI,VTX>::processJets(const edm::Handle<PatJetCollection>& j
     _decayLength = decayLengthSubJets_;
     _deltaR      = deltaRSubJets_;
   }
-   
+
   //// Loop over the jets
   for ( PatJetCollection::const_iterator pjet = jetsColl->begin(); pjet != jetsColl->end(); ++pjet ) {
 
@@ -2735,6 +2737,7 @@ void BTagAnalyzerT<IPTI,VTX>::processJets(const edm::Handle<PatJetCollection>& j
 
     float DoubleSV = pjet->bDiscriminator(doubleSVBJetTags_.c_str());
     float DeepDoubleB = pjet->bDiscriminator(deepDoubleBJetTags_.c_str());
+    float DeepAK8 = pjet->bDiscriminator(deepAK8JetTags_.c_str());
 
 //     float cMVA = pjet->bDiscriminator(cMVABJetTags_.c_str());
     float cMVAv2 = pjet->bDiscriminator(cMVAv2BJetTags_.c_str());
@@ -2813,6 +2816,7 @@ void BTagAnalyzerT<IPTI,VTX>::processJets(const edm::Handle<PatJetCollection>& j
     JetInfo[iJetColl].Jet_SoftEl[JetInfo[iJetColl].nJet]   = SoftE;
     JetInfo[iJetColl].Jet_DoubleSV[JetInfo[iJetColl].nJet] = DoubleSV;
     JetInfo[iJetColl].Jet_DeepDoubleB[JetInfo[iJetColl].nJet] = DeepDoubleB;
+    JetInfo[iJetColl].Jet_DeepAK8[JetInfo[iJetColl].nJet] = DeepAK8;
 //     JetInfo[iJetColl].Jet_cMVA[JetInfo[iJetColl].nJet] = cMVA;
     JetInfo[iJetColl].Jet_cMVAv2[JetInfo[iJetColl].nJet] = cMVAv2;
     JetInfo[iJetColl].Jet_cMVAv2N[JetInfo[iJetColl].nJet] = cMVAv2Neg;
@@ -2830,21 +2834,28 @@ void BTagAnalyzerT<IPTI,VTX>::processJets(const edm::Handle<PatJetCollection>& j
       JetInfo[iJetColl].TagVar_jetNTracks[JetInfo[iJetColl].nJet]                  = nTracks;
       JetInfo[iJetColl].TagVar_jetNSecondaryVertices[JetInfo[iJetColl].nJet]       = nSVs;
       // run 2 id: https://twiki.cern.ch/CMS/JetID13TeVRun2017
-      JetInfo[iJetColl].TagVar_chargedHadronEnergyFraction[JetInfo[iJetColl].nJet] = pjet->chargedHadronEnergyFraction();
-      JetInfo[iJetColl].TagVar_neutralHadronEnergyFraction[JetInfo[iJetColl].nJet] = pjet->neutralHadronEnergyFraction();
-      JetInfo[iJetColl].TagVar_photonEnergyFraction[JetInfo[iJetColl].nJet]        = pjet->photonEnergyFraction();
-      JetInfo[iJetColl].TagVar_electronEnergyFraction[JetInfo[iJetColl].nJet]      = pjet->electronEnergyFraction();
-      JetInfo[iJetColl].TagVar_muonEnergyFraction[JetInfo[iJetColl].nJet]          = pjet->muonEnergyFraction();
-      JetInfo[iJetColl].TagVar_chargedHadronMultiplicity[JetInfo[iJetColl].nJet]   = pjet->chargedHadronMultiplicity();
-      JetInfo[iJetColl].TagVar_neutralHadronMultiplicity[JetInfo[iJetColl].nJet]   = pjet->neutralHadronMultiplicity();
-      JetInfo[iJetColl].TagVar_photonMultiplicity[JetInfo[iJetColl].nJet]          = pjet->photonMultiplicity();
-      JetInfo[iJetColl].TagVar_electronMultiplicity[JetInfo[iJetColl].nJet]        = pjet->electronMultiplicity();
-      JetInfo[iJetColl].TagVar_muonMultiplicity[JetInfo[iJetColl].nJet]            = pjet->muonMultiplicity();
-      JetInfo[iJetColl].TagVar_neutralEmEnergyFraction[JetInfo[iJetColl].nJet] = pjet->neutralEmEnergyFraction();
-      JetInfo[iJetColl].TagVar_numberOfDaughters[JetInfo[iJetColl].nJet] = pjet->numberOfDaughters();
-      JetInfo[iJetColl].TagVar_chargedMultiplicity[JetInfo[iJetColl].nJet] = pjet->chargedMultiplicity();
-      JetInfo[iJetColl].TagVar_chargedEmEnergyFraction[JetInfo[iJetColl].nJet] = pjet->chargedEmEnergyFraction();
-      JetInfo[iJetColl].TagVar_neutralMultiplicity[JetInfo[iJetColl].nJet] = pjet->neutralMultiplicity();
+      //std::cout << "iJetColl =" << iJetColl << " Is pfJet? " << pjet->isPFJet() << std::endl;
+      try {
+        JetInfo[iJetColl].TagVar_chargedHadronEnergyFraction[JetInfo[iJetColl].nJet] = pjet->chargedHadronEnergyFraction();
+        JetInfo[iJetColl].TagVar_neutralHadronEnergyFraction[JetInfo[iJetColl].nJet] = pjet->neutralHadronEnergyFraction();
+        JetInfo[iJetColl].TagVar_muonMultiplicity[JetInfo[iJetColl].nJet]            = pjet->muonMultiplicity();
+        JetInfo[iJetColl].TagVar_chargedMultiplicity[JetInfo[iJetColl].nJet] = pjet->chargedMultiplicity();
+
+        JetInfo[iJetColl].TagVar_photonEnergyFraction[JetInfo[iJetColl].nJet]        = pjet->photonEnergyFraction();
+        JetInfo[iJetColl].TagVar_electronEnergyFraction[JetInfo[iJetColl].nJet]      = pjet->electronEnergyFraction();
+        JetInfo[iJetColl].TagVar_muonEnergyFraction[JetInfo[iJetColl].nJet]          = pjet->muonEnergyFraction();
+        JetInfo[iJetColl].TagVar_chargedHadronMultiplicity[JetInfo[iJetColl].nJet]   = pjet->chargedHadronMultiplicity();
+        JetInfo[iJetColl].TagVar_neutralHadronMultiplicity[JetInfo[iJetColl].nJet]   = pjet->neutralHadronMultiplicity();
+        JetInfo[iJetColl].TagVar_photonMultiplicity[JetInfo[iJetColl].nJet]          = pjet->photonMultiplicity();
+        JetInfo[iJetColl].TagVar_electronMultiplicity[JetInfo[iJetColl].nJet]        = pjet->electronMultiplicity();
+        JetInfo[iJetColl].TagVar_neutralEmEnergyFraction[JetInfo[iJetColl].nJet] = pjet->neutralEmEnergyFraction();
+        JetInfo[iJetColl].TagVar_numberOfDaughters[JetInfo[iJetColl].nJet] = pjet->numberOfDaughters();
+        JetInfo[iJetColl].TagVar_chargedEmEnergyFraction[JetInfo[iJetColl].nJet] = pjet->chargedEmEnergyFraction();
+        JetInfo[iJetColl].TagVar_neutralMultiplicity[JetInfo[iJetColl].nJet] = pjet->neutralMultiplicity();
+      }
+      catch (cms::Exception& excp) {
+        edm::LogInfo("PFJetID") << "Not found in jet";
+      }
 
       // per jet per track
       JetInfo[iJetColl].Jet_nFirstTrkTagVar[JetInfo[iJetColl].nJet] = JetInfo[iJetColl].nTrkTagVar;
@@ -2941,10 +2952,10 @@ void BTagAnalyzerT<IPTI,VTX>::processJets(const edm::Handle<PatJetCollection>& j
       JetInfo[iJetColl].DeepFlavourInput_sv_normchi2[JetInfo[iJetColl].nJet] = (svsize == 0) ? -999 :features.sv_features[0].normchi2;
     }
 
-
     // CSV TaggingVariables
     if ( runCSVTagVariables )
     {
+
       std::vector<const reco::BaseTagInfo*>  baseTagInfos;
       JetTagComputer::TagInfoHelper helper(baseTagInfos);
       baseTagInfos.push_back( ipTagInfo );
@@ -3256,8 +3267,10 @@ void BTagAnalyzerT<IPTI,VTX>::processJets(const edm::Handle<PatJetCollection>& j
     JetInfo[iJetColl].Jet_tau1_vertexNTracks[JetInfo[iJetColl].nJet] = 0;
     JetInfo[iJetColl].Jet_tau2_vertexNTracks[JetInfo[iJetColl].nJet] = 0;
 
+
     for (size_t vtx = 0; vtx < (size_t)svTagInfo->nVertices(); ++vtx)
     {
+
       JetInfo[iJetColl].SV_x[JetInfo[iJetColl].nSV]    = position(svTagInfo->secondaryVertex(vtx)).x();
       JetInfo[iJetColl].SV_y[JetInfo[iJetColl].nSV]    = position(svTagInfo->secondaryVertex(vtx)).y();
       JetInfo[iJetColl].SV_z[JetInfo[iJetColl].nSV]    = position(svTagInfo->secondaryVertex(vtx)).z();
@@ -3468,6 +3481,7 @@ void BTagAnalyzerT<IPTI,VTX>::processJets(const edm::Handle<PatJetCollection>& j
       JetInfo[iJetColl].Jet_nSV_fat[JetInfo[iJetColl].nJet] = vars.get(reco::btau::jetNSecondaryVertices);
       //--------------------------
     }
+
 
 
     cap0=0; cap1=0; cap2=0; cap3=0; cap4=0; cap5=0; cap6=0; cap7=0; cap8=0;

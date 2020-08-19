@@ -421,7 +421,7 @@ if not options.miniAOD and options.runDeepFlavourTagVariables: #FIXME
 
 if options.doBoostedCommissioning:
     print "**********NTuples will be made for boosted b tag commissioning. The following switches will be reset:**********"
-    options.processStdAK4Jets=False
+    options.processStdAK4Jets=True #False
     print "Option processStdAK4Jets will be set to '",options.processStdAK4Jets,"'"
     options.runFatJets=True  
     options.runSubJets = True
@@ -647,6 +647,13 @@ bTagDiscriminators_no_deepFlavour = {i for i in bTagDiscriminators if 'DeepFlavo
 bTagDiscriminatorsFat = copy.deepcopy(bTagDiscriminators_no_deepFlavour)
 ## Add DeepDoubleB tagger to fat jets
 #bTagDiscriminatorsFat.update(set(['pfDeepDoubleBJetTags:probH']))
+
+from PhysicsTools.PatAlgos.tools.jetTools import *
+
+### DeepAK8 and ParticleNet
+from RecoBTag.MXNet.pfDeepBoostedJet_cff import _pfDeepBoostedJetTagsAll, _pfDeepBoostedJetTagsProbs, _pfDeepBoostedJetTagsMetaDiscrs, _pfMassDecorrelatedDeepBoostedJetTagsProbs, _pfMassDecorrelatedDeepBoostedJetTagsMetaDiscrs
+
+bTagDiscriminatorsFat.update(_pfDeepBoostedJetTagsAll)
 
 if options.runJetClustering:
     options.remakeAllDiscr = True
@@ -956,12 +963,6 @@ else:
 ## Load standard PAT objects (here we only need PAT muons but the framework will figure out what it needs to run using the unscheduled mode)
 process.load("PhysicsTools.PatAlgos.producersLayer1.patCandidates_cff")
 process.load("PhysicsTools.PatAlgos.selectionLayer1.selectedPatCandidates_cff")
-
-from PhysicsTools.PatAlgos.tools.jetTools import *
-
-### DeepAK8 and ParticleNet
-from RecoBTag.MXNet.pfDeepBoostedJet_cff import _pfDeepBoostedJetTagsAll, _pfDeepBoostedJetTagsProbs, _pfDeepBoostedJetTagsMetaDiscrs, _pfMassDecorrelatedDeepBoostedJetTagsProbs, _pfMassDecorrelatedDeepBoostedJetTagsMetaDiscrs
-bTagDiscriminators.update(_pfDeepBoostedJetTagsAll)
 
 ## Updated the default jet collection
 if options.miniAOD and not options.runJetClustering:

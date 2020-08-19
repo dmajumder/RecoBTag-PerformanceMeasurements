@@ -332,7 +332,19 @@ private:
 
   std::string doubleSVBJetTags_;
   std::string deepDoubleBJetTags_;
-  std::string deepAK8JetTags_;
+  std::string deepAK8JetTags_Hbb_;
+  std::string deepAK8JetTags_ZHbb_;
+  std::string particleNetJetTags_probXqq_; 
+  std::string particleNetJetTags_probXcc_; 
+  std::string particleNetJetTags_probQCDcc_; 
+  std::string particleNetJetTags_probQCDc_; 
+  std::string particleNetJetTags_probQCDb_; 
+  std::string particleNetJetTags_probQCDbb_; 
+  std::string particleNetJetTags_probQCDothers_;
+  std::string particleNetJetTags_probXbb_; 
+  std::string particleNetJetTags_probXqqvsQCC_; 
+  std::string particleNetJetTags_probXccvsQCC_; 
+  std::string particleNetJetTags_probXbbvsQCD_; 
 
   std::string cMVABJetTags_;
   std::string cMVAv2BJetTags_;
@@ -660,7 +672,19 @@ BTagAnalyzerT<IPTI,VTX>::BTagAnalyzerT(const edm::ParameterSet& iConfig):
 
   doubleSVBJetTags_ = iConfig.getParameter<std::string>("doubleSVBJetTags");
   deepDoubleBJetTags_ = iConfig.getParameter<std::string>("deepDoubleBJetTags");
-  deepAK8JetTags_ = iConfig.getParameter<std::string>("deepAK8JetTags");
+  deepAK8JetTags_Hbb_ = iConfig.getParameter<std::string>("deepAK8JetTags_Hbb");
+  deepAK8JetTags_ZHbb_ = iConfig.getParameter<std::string>("deepAK8JetTags_ZHbb");
+  particleNetJetTags_probXqq_ = iConfig.getParameter<std::string>("particleNetJetTags_probXqq"); 
+  particleNetJetTags_probXcc_ = iConfig.getParameter<std::string>("particleNetJetTags_probXcc"); 
+  particleNetJetTags_probQCDcc_ = iConfig.getParameter<std::string>("particleNetJetTags_probQCDcc"); 
+  particleNetJetTags_probQCDc_ = iConfig.getParameter<std::string>("particleNetJetTags_probQCDc"); 
+  particleNetJetTags_probQCDb_ = iConfig.getParameter<std::string>("particleNetJetTags_probQCDb"); 
+  particleNetJetTags_probQCDbb_ = iConfig.getParameter<std::string>("particleNetJetTags_probQCDbb"); 
+  particleNetJetTags_probQCDothers_ = iConfig.getParameter<std::string>("particleNetJetTags_probQCDothers");
+  particleNetJetTags_probXbb_ = iConfig.getParameter<std::string>("particleNetJetTags_probXbb"); 
+  particleNetJetTags_probXqqvsQCC_ = iConfig.getParameter<std::string>("particleNetJetTags_probXqqvsQCC"); 
+  particleNetJetTags_probXccvsQCC_ = iConfig.getParameter<std::string>("particleNetJetTags_probXccvsQCC"); 
+  particleNetJetTags_probXbbvsQCD_ = iConfig.getParameter<std::string>("particleNetJetTags_probXbbvsQCD"); 
 
   cMVABJetTags_ = iConfig.getParameter<std::string>("cMVABJetTags");
   cMVAv2BJetTags_ = iConfig.getParameter<std::string>("cMVAv2BJetTags");
@@ -2737,7 +2761,19 @@ void BTagAnalyzerT<IPTI,VTX>::processJets(const edm::Handle<PatJetCollection>& j
 
     float DoubleSV = pjet->bDiscriminator(doubleSVBJetTags_.c_str());
     float DeepDoubleB = pjet->bDiscriminator(deepDoubleBJetTags_.c_str());
-    float DeepAK8 = pjet->bDiscriminator(deepAK8JetTags_.c_str());
+    float DeepAK8_Hbb = pjet->bDiscriminator(deepAK8JetTags_Hbb_.c_str());
+    float DeepAK8_ZHbb = pjet->bDiscriminator(deepAK8JetTags_ZHbb_.c_str());
+    float particleNet_probXqq = pjet->bDiscriminator(particleNetJetTags_probXqq_.c_str()); 
+    float particleNet_probXcc = pjet->bDiscriminator(particleNetJetTags_probXcc_.c_str()); 
+    float particleNet_probQCDcc = pjet->bDiscriminator(particleNetJetTags_probQCDcc_.c_str()); 
+    float particleNet_probQCDc = pjet->bDiscriminator(particleNetJetTags_probQCDc_.c_str()); 
+    float particleNet_probQCDb = pjet->bDiscriminator(particleNetJetTags_probQCDb_.c_str()); 
+    float particleNet_probQCDbb = pjet->bDiscriminator(particleNetJetTags_probQCDbb_.c_str()); 
+    float particleNet_probQCDothers = pjet->bDiscriminator(particleNetJetTags_probQCDothers_.c_str());
+    float particleNet_probXbb = pjet->bDiscriminator(particleNetJetTags_probXbb_.c_str()); 
+    float particleNet_probXqqvsQCC = pjet->bDiscriminator(particleNetJetTags_probXqqvsQCC_.c_str()); 
+    float particleNet_probXccvsQCC = pjet->bDiscriminator(particleNetJetTags_probXccvsQCC_.c_str()); 
+    float particleNet_probXbbvsQCD = pjet->bDiscriminator(particleNetJetTags_probXbbvsQCD_.c_str()); 
 
 //     float cMVA = pjet->bDiscriminator(cMVABJetTags_.c_str());
     float cMVAv2 = pjet->bDiscriminator(cMVAv2BJetTags_.c_str());
@@ -2816,7 +2852,19 @@ void BTagAnalyzerT<IPTI,VTX>::processJets(const edm::Handle<PatJetCollection>& j
     JetInfo[iJetColl].Jet_SoftEl[JetInfo[iJetColl].nJet]   = SoftE;
     JetInfo[iJetColl].Jet_DoubleSV[JetInfo[iJetColl].nJet] = DoubleSV;
     JetInfo[iJetColl].Jet_DeepDoubleB[JetInfo[iJetColl].nJet] = DeepDoubleB;
-    JetInfo[iJetColl].Jet_DeepAK8[JetInfo[iJetColl].nJet] = DeepAK8;
+    JetInfo[iJetColl].Jet_DeepAK8_Hbb[JetInfo[iJetColl].nJet] = DeepAK8_Hbb;
+    JetInfo[iJetColl].Jet_DeepAK8_ZHbb[JetInfo[iJetColl].nJet] = DeepAK8_ZHbb;
+    JetInfo[iJetColl].Jet_particleNet_probXqq[JetInfo[iJetColl].nJet] = particleNet_probXqq       ; 
+    JetInfo[iJetColl].Jet_particleNet_probXcc[JetInfo[iJetColl].nJet] = particleNet_probXcc       ; 
+    JetInfo[iJetColl].Jet_particleNet_probQCDcc[JetInfo[iJetColl].nJet] = particleNet_probQCDcc     ; 
+    JetInfo[iJetColl].Jet_particleNet_probQCDc[JetInfo[iJetColl].nJet] = particleNet_probQCDc      ; 
+    JetInfo[iJetColl].Jet_particleNet_probQCDb[JetInfo[iJetColl].nJet] = particleNet_probQCDb      ; 
+    JetInfo[iJetColl].Jet_particleNet_probQCDbb[JetInfo[iJetColl].nJet] = particleNet_probQCDbb     ; 
+    JetInfo[iJetColl].Jet_particleNet_probQCDothers[JetInfo[iJetColl].nJet] = particleNet_probQCDothers ; 
+    JetInfo[iJetColl].Jet_particleNet_probXbb[JetInfo[iJetColl].nJet] = particleNet_probXbb       ; 
+    JetInfo[iJetColl].Jet_particleNet_probXqqvsQCC[JetInfo[iJetColl].nJet] = particleNet_probXqqvsQCC  ; 
+    JetInfo[iJetColl].Jet_particleNet_probXccvsQCC[JetInfo[iJetColl].nJet] = particleNet_probXccvsQCC  ; 
+    JetInfo[iJetColl].Jet_particleNet_probXbbvsQCD[JetInfo[iJetColl].nJet] = particleNet_probXbbvsQCD  ; 
 //     JetInfo[iJetColl].Jet_cMVA[JetInfo[iJetColl].nJet] = cMVA;
     JetInfo[iJetColl].Jet_cMVAv2[JetInfo[iJetColl].nJet] = cMVAv2;
     JetInfo[iJetColl].Jet_cMVAv2N[JetInfo[iJetColl].nJet] = cMVAv2Neg;

@@ -754,7 +754,8 @@ process.source = cms.Source("PoolSource",
 
 if options.miniAOD:
     process.source.fileNames = [
-        'file:VBF_HHTo4B_CV_1_5_C2V_1_C3_1_TuneCP5_PSWeights_14TeV-madgraph-pythia8_Phase2HLTTDRWinter20RECOMiniAOD_NoPU_110X_mcRun4_realistic_v3-v2.root'
+        #'file:VBF_HHTo4B_CV_1_5_C2V_1_C3_1_TuneCP5_PSWeights_14TeV-madgraph-pythia8_Phase2HLTTDRWinter20RECOMiniAOD_NoPU_110X_mcRun4_realistic_v3-v2.root'
+        '/store/mc/Phase2HLTTDRWinter20RECOMiniAOD/VBF_HHTo4B_CV_1_C2V_1_C3_0_TuneCP5_PSWeights_14TeV-madgraph-pythia8/MINIAODSIM/PU200_110X_mcRun4_realistic_v3-v2/10000/29192B5F-79D5-BA4D-94F5-1ACB74515A83.root'
     ]
     if options.runOnData:
         process.source.fileNames = [

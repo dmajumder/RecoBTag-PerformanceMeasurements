@@ -852,8 +852,9 @@ void BTagAnalyzerT<IPTI,VTX>::analyze(const edm::Event& iEvent, const edm::Event
 
     std::string moduleName = "";
     const edm::Provenance& prov = iEvent.getProvenance(genEvtInfoProduct.id());
+    const edm::ProcessHistory& hist = iEvent.processHistory();
     if( genEvtInfoProduct.isValid() )
-      moduleName = edm::moduleName(prov);
+      moduleName = edm::moduleName(prov, hist);
 
     if( moduleName.find("Pythia8")!=std::string::npos )
       hadronizerType_ |= ( 1 << 1 ); // set the 2nd bit
@@ -1938,11 +1939,11 @@ void BTagAnalyzerT<IPTI,VTX>::processJets(const edm::Handle<PatJetCollection>& j
       JetInfo[iJetColl].Jet_massSoftDrop[JetInfo[iJetColl].nJet]  = ( pjet->hasUserFloat("SoftDrop:Mass")       ? pjet->userFloat("SoftDrop:Mass")       : pjet->userFloat("ak8PFJetsPuppiSoftDropMass") );
       JetInfo[iJetColl].Jet_jecF0SoftDrop[JetInfo[iJetColl].nJet] = ( pjet->hasUserFloat("SoftDrop:jecFactor0") ? pjet->userFloat("SoftDrop:jecFactor0") : 0. );
       // Pruned kinematics
-      JetInfo[iJetColl].Jet_ptPruned[JetInfo[iJetColl].nJet]    = ( pjet->hasUserFloat("Pruned:Pt")         ? pjet->userFloat("Pruned:Pt")         : 0. );
-      JetInfo[iJetColl].Jet_etaPruned[JetInfo[iJetColl].nJet]   = ( pjet->hasUserFloat("Pruned:Eta")        ? pjet->userFloat("Pruned:Eta")        : 0. );
-      JetInfo[iJetColl].Jet_phiPruned[JetInfo[iJetColl].nJet]   = ( pjet->hasUserFloat("Pruned:Phi")        ? pjet->userFloat("Pruned:Phi")        : 0. );
-      JetInfo[iJetColl].Jet_massPruned[JetInfo[iJetColl].nJet]  = ( pjet->hasUserFloat("Pruned:Mass")       ? pjet->userFloat("Pruned:Mass")       : pjet->userFloat("ak8PFJetsCHSValueMap:ak8PFJetsCHSPrunedMass") );
-      JetInfo[iJetColl].Jet_jecF0Pruned[JetInfo[iJetColl].nJet] = ( pjet->hasUserFloat("Pruned:jecFactor0") ? pjet->userFloat("Pruned:jecFactor0") : 0. );
+      //JetInfo[iJetColl].Jet_ptPruned[JetInfo[iJetColl].nJet]    = ( pjet->hasUserFloat("Pruned:Pt")         ? pjet->userFloat("Pruned:Pt")         : 0. );
+      //JetInfo[iJetColl].Jet_etaPruned[JetInfo[iJetColl].nJet]   = ( pjet->hasUserFloat("Pruned:Eta")        ? pjet->userFloat("Pruned:Eta")        : 0. );
+      //JetInfo[iJetColl].Jet_phiPruned[JetInfo[iJetColl].nJet]   = ( pjet->hasUserFloat("Pruned:Phi")        ? pjet->userFloat("Pruned:Phi")        : 0. );
+      //JetInfo[iJetColl].Jet_massPruned[JetInfo[iJetColl].nJet]  = ( pjet->hasUserFloat("Pruned:Mass")       ? pjet->userFloat("Pruned:Mass")       : pjet->userFloat("ak8PFJetsCHSValueMap:ak8PFJetsCHSPrunedMass") );
+      //JetInfo[iJetColl].Jet_jecF0Pruned[JetInfo[iJetColl].nJet] = ( pjet->hasUserFloat("Pruned:jecFactor0") ? pjet->userFloat("Pruned:jecFactor0") : 0. );
     }
     if ( runFatJets_ && runSubJets_ && iJetColl == 0 )
     {

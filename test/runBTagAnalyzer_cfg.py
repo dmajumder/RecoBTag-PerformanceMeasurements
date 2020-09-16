@@ -651,7 +651,7 @@ bTagDiscriminatorsFat = copy.deepcopy(bTagDiscriminators_no_deepFlavour)
 from PhysicsTools.PatAlgos.tools.jetTools import *
 
 ### DeepAK8 and ParticleNet
-from RecoBTag.MXNet.pfDeepBoostedJet_cff import _pfDeepBoostedJetTagsAll, _pfDeepBoostedJetTagsProbs, _pfDeepBoostedJetTagsMetaDiscrs, _pfMassDecorrelatedDeepBoostedJetTagsProbs, _pfMassDecorrelatedDeepBoostedJetTagsMetaDiscrs
+from RecoBTag.ONNXRuntime.pfDeepBoostedJet_cff import _pfDeepBoostedJetTagsAll, _pfDeepBoostedJetTagsProbs, _pfDeepBoostedJetTagsMetaDiscrs, _pfMassDecorrelatedDeepBoostedJetTagsProbs, _pfMassDecorrelatedDeepBoostedJetTagsMetaDiscrs
 
 bTagDiscriminatorsFat.update(_pfDeepBoostedJetTagsAll)
 

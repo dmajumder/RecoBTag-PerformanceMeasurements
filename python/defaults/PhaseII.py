@@ -6,7 +6,7 @@ common = {
 	'usePuppi' : True,
 	'usePuppiForFatJets' : True,
 	'usePuppiForBTagging' : False,
-	'mcGlobalTag' : '110X_mcRun4_realistic_v3',
+	'mcGlobalTag' : '111X_mcRun4_realistic_T15_v1',
 	'remakeAllDiscr' : True,
 	'maxJetEta' : 4.5,
 	'usePrivateJEC' : False,
